@@ -157,9 +157,33 @@ with st.sidebar:
     """)
     
     st.header("Example Texts")
-    if st.button("Load Example"):
-        st.session_state.reference_input = "Apple Inc. reported record quarterly earnings yesterday. The technology giant's revenue exceeded analyst expectations, driven by strong iPhone sales in Asian markets. CEO Tim Cook praised the team's innovation and customer loyalty."
-        st.session_state.target_input = "Apple announced impressive quarterly profits. The tech company's earnings surpassed predictions due to robust iPhone purchases in Asia. Tim Cook commended employee creativity and consumer dedication."
+    
+    examples = {
+        "Select an example...": ("", ""),
+        "📰 News Article": (
+            "Apple Inc. reported record quarterly earnings yesterday. The technology giant's revenue exceeded analyst expectations, driven by strong iPhone sales in Asian markets. CEO Tim Cook praised the team's innovation and customer loyalty.",
+            "Apple announced impressive quarterly profits. The tech company's earnings surpassed predictions due to robust iPhone purchases in Asia. Tim Cook commended employee creativity and consumer dedication."
+        ),
+        "🔬 Academic Paraphrase": (
+            "The researchers conducted a comprehensive study on climate change effects. They analyzed data from multiple sources and discovered significant temperature increases in coastal regions.",
+            "Scientists performed an extensive investigation into the impacts of global warming. The team examined information from various databases and found substantial rises in temperatures along seaside areas."
+        ),
+        "📝 Near Duplicate": (
+            "The quick brown fox jumps over the lazy dog in the garden.",
+            "The quick brown fox jumped over the lazy dog in the garden."
+        ),
+        "🌐 Translation-Like": (
+            "The university announced new scholarship opportunities for international students. These programs aim to increase diversity and provide financial support to talented individuals from developing countries.",
+            "The college revealed fresh funding options for overseas learners. The initiatives seek to boost variety and offer monetary aid to gifted persons from emerging nations."
+        )
+    }
+
+selected_example = st.selectbox("Choose an example:", list(examples.keys()))
+
+if st.button("Load Selected Example"):
+    if selected_example != "Select an example...":
+        st.session_state.reference_input = examples[selected_example][0]
+        st.session_state.target_input = examples[selected_example][1]
 
 # Main content
 col1, col2 = st.columns(2)
