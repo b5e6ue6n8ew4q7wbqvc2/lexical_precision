@@ -71,9 +71,9 @@ def calculate_overlaps_detailed(reference_text, target_text):
         'target_only': sorted(list(target_content_lemmas - ref_content_lemmas))
     }
     
-    # 5. Multiword unit overlap
-    ref_chunks = set([chunk.text.lower() for chunk in ref_doc.noun_chunks])
-    target_chunks = set([chunk.text.lower() for chunk in target_doc.noun_chunks])
+    # 5. Multiword unit overlap (only phrases with 2+ words)
+    ref_chunks = set([chunk.text.lower() for chunk in ref_doc.noun_chunks if len(chunk.text.split()) > 1])
+    target_chunks = set([chunk.text.lower() for chunk in target_doc.noun_chunks if len(chunk.text.split()) > 1])
     overlap_chunks = ref_chunks & target_chunks
     results['multiword_overlap'] = {
         'score': len(overlap_chunks) / len(ref_chunks | target_chunks) if (ref_chunks | target_chunks) else 0,
