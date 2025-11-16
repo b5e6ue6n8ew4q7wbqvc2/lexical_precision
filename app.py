@@ -169,7 +169,6 @@ with col1:
     st.subheader("Reference Text")
     reference = st.text_area(
         "Enter reference text:",
-        value=st.session_state.get('ref_text', ''),
         height=200,
         key='reference_input'
     )
@@ -178,7 +177,6 @@ with col2:
     st.subheader("Target Text")
     target = st.text_area(
         "Enter target text:",
-        value=st.session_state.get('target_text', ''),
         height=200,
         key='target_input'
     )
