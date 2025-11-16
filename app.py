@@ -2,13 +2,20 @@ import streamlit as st
 import spacy
 import pandas as pd
 from datetime import datetime
+import subprocess
+import sys
 
 # Page config
 st.set_page_config(page_title="Text Overlap Analyzer", layout="wide")
 
 @st.cache_resource
 def load_model():
-    return spacy.load("en_core_web_sm")
+    try:
+        return spacy.load("en_core_web_sm")
+    except OSError:
+        st.warning("⏳ Downloading language model for first-time setup...")
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+        return spacy.load("en_core_web_sm")
 
 nlp = load_model()
 
