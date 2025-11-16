@@ -261,4 +261,4 @@ if 'results' in st.session_state:
     
     # Show preview of CSV
     with st.expander("Preview CSV Data"):
-        st.dataframe(csv_data, use_container_width=True)
+        st.dataframe(csv_data, width='stretch')
