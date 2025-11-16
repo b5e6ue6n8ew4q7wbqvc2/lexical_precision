@@ -177,13 +177,13 @@ with st.sidebar:
             "The college revealed fresh funding options for overseas learners. The initiatives seek to boost variety and offer monetary aid to gifted persons from emerging nations."
         )
     }
-
-selected_example = st.selectbox("Choose an example:", list(examples.keys()))
-
-if st.button("Load Selected Example"):
-    if selected_example != "Select an example...":
-        st.session_state.reference_input = examples[selected_example][0]
-        st.session_state.target_input = examples[selected_example][1]
+    
+    selected_example = st.selectbox("Choose an example:", list(examples.keys()))
+    
+    if st.button("Load Selected Example"):
+        if selected_example != "Select an example...":
+            st.session_state.reference_input = examples[selected_example][0]
+            st.session_state.target_input = examples[selected_example][1]
 
 # Main content
 col1, col2 = st.columns(2)
