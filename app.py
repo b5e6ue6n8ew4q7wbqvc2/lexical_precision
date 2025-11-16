@@ -158,8 +158,9 @@ with st.sidebar:
     
     st.header("Example Texts")
     if st.button("Load Example"):
-        st.session_state.ref_text = "The cats were running quickly through the garden"
-        st.session_state.target_text = "A cat runs fast in the gardens"
+        st.session_state.reference_input = "The cats were running quickly through the garden"
+        st.session_state.target_input = "A cat runs fast in the gardens"
+        st.rerun()
 
 # Main content
 col1, col2 = st.columns(2)
