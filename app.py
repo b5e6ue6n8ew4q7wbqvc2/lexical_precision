@@ -158,9 +158,8 @@ with st.sidebar:
     
     st.header("Example Texts")
     if st.button("Load Example"):
-        st.session_state.reference_input = "The researchers conducted a comprehensive study on climate change effects. They analyzed data from multiple sources and discovered significant temperature increases in coastal regions."
-        st.session_state.target_input = "Scientists performed an extensive investigation into the impacts of global warming. The team examined information from various databases and found substantial rises in temperatures along seaside areas."
-        st.rerun()
+        st.session_state.reference_input = "Apple Inc. reported record quarterly earnings yesterday. The technology giant's revenue exceeded analyst expectations, driven by strong iPhone sales in Asian markets. CEO Tim Cook praised the team's innovation and customer loyalty."
+        st.session_state.target_input = "Apple announced impressive quarterly profits. The tech company's earnings surpassed predictions due to robust iPhone purchases in Asia. Tim Cook commended employee creativity and consumer dedication."
 
 # Main content
 col1, col2 = st.columns(2)
