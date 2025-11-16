@@ -158,8 +158,8 @@ with st.sidebar:
     
     st.header("Example Texts")
     if st.button("Load Example"):
-        st.session_state.reference_input = "The cats were running quickly through the garden"
-        st.session_state.target_input = "A cat runs fast in the gardens"
+        st.session_state.reference_input = "The researchers conducted a comprehensive study on climate change effects. They analyzed data from multiple sources and discovered significant temperature increases in coastal regions."
+        st.session_state.target_input = "Scientists performed an extensive investigation into the impacts of global warming. The team examined information from various databases and found substantial rises in temperatures along seaside areas."
         st.rerun()
 
 # Main content
