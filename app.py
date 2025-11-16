@@ -160,21 +160,25 @@ with st.sidebar:
     
     examples = {
         "Select an example...": ("", ""),
-        "📰 News Article": (
-            "Apple Inc. reported record quarterly earnings yesterday. The technology giant's revenue exceeded analyst expectations, driven by strong iPhone sales in Asian markets. CEO Tim Cook praised the team's innovation and customer loyalty.",
-            "Apple announced impressive quarterly profits. The tech company's earnings surpassed predictions due to robust iPhone purchases in Asia. Tim Cook commended employee creativity and consumer dedication."
+        "🌍 Climate Change": (
+            "Climate change poses serious threats to coastal cities. Rising sea levels and extreme weather events are forcing governments to develop adaptation strategies. The Paris Agreement aims to limit global warming to 1.5 degrees.",
+            "Climate change threatens coastal cities worldwide. Rising sea levels and severe weather patterns require new adaptation strategies. The Paris Agreement seeks to restrict global warming to 1.5 degrees Celsius."
         ),
-        "🔬 Academic Paraphrase": (
-            "The researchers conducted a comprehensive study on climate change effects. They analyzed data from multiple sources and discovered significant temperature increases in coastal regions.",
-            "Scientists performed an extensive investigation into the impacts of global warming. The team examined information from various databases and found substantial rises in temperatures along seaside areas."
+        "🤖 Artificial Intelligence": (
+            "Machine learning algorithms are transforming the healthcare industry. Deep neural networks can detect early signs of disease in medical images. The artificial intelligence revolution is improving patient outcomes across hospitals.",
+            "Machine learning systems are revolutionizing healthcare. Deep neural networks identify disease markers in medical scans. The artificial intelligence boom enhances patient care in medical facilities."
+        ),
+        "📱 Tech Companies": (
+            "Apple Inc. and Microsoft Corporation dominate the tech industry. The iPhone and Surface devices compete for market share. Silicon Valley remains the innovation hub for these technology giants.",
+            "Apple Inc. and Microsoft Corporation lead the technology sector. The iPhone and Surface products battle for customers. Silicon Valley stays the central hub for these tech companies."
+        ),
+        "🏛️ Historical Sites": (
+            "The Great Wall of China attracts millions of tourists annually. The ancient structure spans thousands of miles across northern China. UNESCO World Heritage Sites like this require careful preservation.",
+            "The Great Wall of China draws countless visitors each year. This ancient monument stretches for thousands of miles through northern China. UNESCO World Heritage Sites such as these need ongoing conservation."
         ),
         "📝 Near Duplicate": (
             "The quick brown fox jumps over the lazy dog in the garden.",
             "The quick brown fox jumped over the lazy dog in the garden."
-        ),
-        "🌐 Translation-Like": (
-            "The university announced new scholarship opportunities for international students. These programs aim to increase diversity and provide financial support to talented individuals from developing countries.",
-            "The college revealed fresh funding options for overseas learners. The initiatives seek to boost variety and offer monetary aid to gifted persons from emerging nations."
         )
     }
     
