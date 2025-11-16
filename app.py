@@ -8,18 +8,27 @@ import sys
 # Page config
 st.set_page_config(page_title="Text Overlap Analyzer", layout="wide")
 
+# Language models mapping
+LANGUAGE_MODELS = {
+    "English": "en_core_web_sm",
+    "Spanish": "es_core_news_sm",
+    "French": "fr_core_news_sm",
+    "German": "de_core_news_sm",
+    "Italian": "it_core_news_sm",
+    "Portuguese": "pt_core_news_sm"
+}
+
 @st.cache_resource
-def load_model():
+def load_model(model_name):
+    """Load spaCy model, download if necessary"""
     try:
-        return spacy.load("en_core_web_sm")
+        return spacy.load(model_name)
     except OSError:
-        st.warning("⏳ Downloading language model for first-time setup...")
-        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-        return spacy.load("en_core_web_sm")
+        st.info(f"⏳ Downloading {model_name} language model (first time only, ~30 seconds)...")
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", model_name])
+        return spacy.load(model_name)
 
-nlp = load_model()
-
-def calculate_overlaps_detailed(reference_text, target_text):
+def calculate_overlaps_detailed(reference_text, target_text, nlp):
     """Calculate overlaps and return detailed information."""
     ref_doc = nlp(reference_text)
     target_doc = nlp(target_text)
@@ -71,21 +80,20 @@ def calculate_overlaps_detailed(reference_text, target_text):
         'target_only': sorted(list(target_content_lemmas - ref_content_lemmas))
     }
     
-    # 5. Multiword unit overlap (n-grams: 2, 3, 4)
-    def get_ngrams(doc, n_values=[2, 3, 4]):
-        """Extract n-grams for specified values of n"""
-        ngrams = set()
+    # 5. Multiword unit overlap (bigrams only)
+    def get_bigrams(doc):
+        """Extract 2-word sequences"""
+        bigrams = set()
         tokens = [token.text.lower() for token in doc if not token.is_punct and not token.is_space]
-        for n in n_values:
-            for i in range(len(tokens) - n + 1):
-                ngram = ' '.join(tokens[i:i+n])
-                ngrams.add(ngram)
-        return ngrams
-    
-    ref_ngrams = get_ngrams(ref_doc)
-    target_ngrams = get_ngrams(target_doc)
+        for i in range(len(tokens) - 1):
+            bigram = ' '.join(tokens[i:i+2])
+            bigrams.add(bigram)
+        return bigrams
+
+    ref_ngrams = get_bigrams(ref_doc)
+    target_ngrams = get_bigrams(target_doc)
     overlap_ngrams = ref_ngrams & target_ngrams
-    
+
     results['multiword_overlap'] = {
         'score': len(overlap_ngrams) / len(ref_ngrams | target_ngrams) if (ref_ngrams | target_ngrams) else 0,
         'overlapping': sorted(list(overlap_ngrams)),
@@ -95,13 +103,14 @@ def calculate_overlaps_detailed(reference_text, target_text):
     
     return results
 
-def create_csv_data(reference_text, target_text, results):
+def create_csv_data(reference_text, target_text, results, language):
     """Create CSV-ready data from results."""
     rows = []
     
     # Summary row
     rows.append({
         'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'Language': language,
         'Reference Text': reference_text[:100] + "..." if len(reference_text) > 100 else reference_text,
         'Target Text': target_text[:100] + "..." if len(target_text) > 100 else target_text,
         'Metric': 'Summary',
@@ -116,13 +125,14 @@ def create_csv_data(reference_text, target_text, results):
         'lemma_overlap': 'Lemmatized Overlap',
         'content_overlap': 'Content Word Overlap',
         'lemma_content_overlap': 'Lemmatized Content Overlap',
-        'multiword_overlap': 'Multiword Unit Overlap'
+        'multiword_overlap': 'Multiword Unit Overlap (Bigrams)'
     }
     
     for key, name in metric_names.items():
         result = results[key]
         rows.append({
             'Timestamp': '',
+            'Language': '',
             'Reference Text': '',
             'Target Text': '',
             'Metric': name,
@@ -132,6 +142,7 @@ def create_csv_data(reference_text, target_text, results):
         })
         rows.append({
             'Timestamp': '',
+            'Language': '',
             'Reference Text': '',
             'Target Text': '',
             'Metric': name,
@@ -141,6 +152,7 @@ def create_csv_data(reference_text, target_text, results):
         })
         rows.append({
             'Timestamp': '',
+            'Language': '',
             'Reference Text': '',
             'Target Text': '',
             'Metric': name,
@@ -157,6 +169,16 @@ st.markdown("Analyze lexical overlap between two texts using various linguistic 
 
 # Sidebar with info
 with st.sidebar:
+    st.header("⚙️ Settings")
+    selected_language = st.selectbox(
+        "Select Language:",
+        list(LANGUAGE_MODELS.keys()),
+        help="Choose the language of your texts for accurate analysis"
+    )
+    nlp = load_model(LANGUAGE_MODELS[selected_language])
+    
+    st.divider()
+    
     st.header("About")
     st.markdown("""
     This tool analyzes overlap between two texts using:
@@ -164,39 +186,73 @@ with st.sidebar:
     - **Lemmatized Overlap**: Base forms
     - **Content Word Overlap**: Nouns, verbs, adjectives, adverbs
     - **Lemmatized Content**: Lemmatized content words
-    - **Multiword Units**: Noun chunks
+    - **Multiword Units**: Bigrams (2-word sequences)
+    
+    **Supports:** English, Spanish, French, German, Italian, Portuguese
     """)
+    
+    st.divider()
     
     st.header("Example Texts")
     
-    examples = {
-        "Select an example...": ("", ""),
-        "🌍 Climate Change": (
-            "Climate change poses serious threats to coastal cities. Rising sea levels and extreme weather events are forcing governments to develop adaptation strategies. The Paris Agreement aims to limit global warming to 1.5 degrees.",
-            "Climate change threatens coastal cities worldwide. Rising sea levels and severe weather patterns require new adaptation strategies. The Paris Agreement seeks to restrict global warming to 1.5 degrees Celsius."
-        ),
-        "🤖 Artificial Intelligence": (
-            "Machine learning algorithms are transforming the healthcare industry. Deep neural networks can detect early signs of disease in medical images. The artificial intelligence revolution is improving patient outcomes across hospitals.",
-            "Machine learning systems are revolutionizing healthcare. Deep neural networks identify disease markers in medical scans. The artificial intelligence boom enhances patient care in medical facilities."
-        ),
-        "📱 Tech Companies": (
-            "Apple Inc. and Microsoft Corporation dominate the tech industry. The iPhone and Surface devices compete for market share. Silicon Valley remains the innovation hub for these technology giants.",
-            "Apple Inc. and Microsoft Corporation lead the technology sector. The iPhone and Surface products battle for customers. Silicon Valley stays the central hub for these tech companies."
-        ),
-        "🏛️ Historical Sites": (
-            "The Great Wall of China attracts millions of tourists annually. The ancient structure spans thousands of miles across northern China. UNESCO World Heritage Sites like this require careful preservation.",
-            "The Great Wall of China draws countless visitors each year. This ancient monument stretches for thousands of miles through northern China. UNESCO World Heritage Sites such as these need ongoing conservation."
-        ),
-        "📝 Near Duplicate": (
-            "The quick brown fox jumps over the lazy dog in the garden.",
-            "The quick brown fox jumped over the lazy dog in the garden."
-        )
-    }
+    # Language-specific examples
+    if selected_language == "English":
+        examples = {
+            "Select an example...": ("", ""),
+            "🌍 Climate Change": (
+                "Climate change poses serious threats to coastal cities. Rising sea levels and extreme weather events are forcing governments to develop adaptation strategies. The Paris Agreement aims to limit global warming to 1.5 degrees.",
+                "Climate change threatens coastal cities worldwide. Rising sea levels and severe weather patterns require new adaptation strategies. The Paris Agreement seeks to restrict global warming to 1.5 degrees Celsius."
+            ),
+            "🤖 Artificial Intelligence": (
+                "Machine learning algorithms are transforming the healthcare industry. Deep neural networks can detect early signs of disease in medical images. The artificial intelligence revolution is improving patient outcomes across hospitals.",
+                "Machine learning systems are revolutionizing healthcare. Deep neural networks identify disease markers in medical scans. The artificial intelligence boom enhances patient care in medical facilities."
+            ),
+            "📱 Tech Companies": (
+                "Apple Inc. and Microsoft Corporation dominate the tech industry. The iPhone and Surface devices compete for market share. Silicon Valley remains the innovation hub for these technology giants.",
+                "Apple Inc. and Microsoft Corporation lead the technology sector. The iPhone and Surface products battle for customers. Silicon Valley stays the central hub for these tech companies."
+            )
+        }
+    elif selected_language == "Spanish":
+        examples = {
+            "Selecciona un ejemplo...": ("", ""),
+            "🌍 Cambio Climático": (
+                "El cambio climático representa una amenaza seria para las ciudades costeras. El aumento del nivel del mar y los eventos climáticos extremos obligan a los gobiernos a desarrollar estrategias de adaptación.",
+                "El cambio climático amenaza las ciudades costeras del mundo. El aumento del nivel del mar y los patrones climáticos severos requieren nuevas estrategias de adaptación."
+            ),
+            "🤖 Inteligencia Artificial": (
+                "Los algoritmos de aprendizaje automático están transformando la industria de la salud. Las redes neuronales profundas pueden detectar signos tempranos de enfermedades en imágenes médicas.",
+                "Los sistemas de aprendizaje automático están revolucionando la atención médica. Las redes neuronales profundas identifican marcadores de enfermedades en escaneos médicos."
+            ),
+            "📱 Tecnología": (
+                "Apple Inc. y Microsoft Corporation dominan la industria tecnológica. El iPhone y los dispositivos Surface compiten por cuota de mercado.",
+                "Apple Inc. y Microsoft Corporation lideran el sector tecnológico. El iPhone y los productos Surface luchan por los clientes."
+            )
+        }
+    elif selected_language == "French":
+        examples = {
+            "Sélectionnez un exemple...": ("", ""),
+            "🌍 Changement Climatique": (
+                "Le changement climatique représente une menace sérieuse pour les villes côtières. L'élévation du niveau de la mer et les événements météorologiques extrêmes obligent les gouvernements à développer des stratégies d'adaptation.",
+                "Le changement climatique menace les villes côtières du monde entier. L'élévation du niveau de la mer et les conditions météorologiques sévères nécessitent de nouvelles stratégies d'adaptation."
+            ),
+            "🤖 Intelligence Artificielle": (
+                "Les algorithmes d'apprentissage automatique transforment l'industrie de la santé. Les réseaux neuronaux profonds peuvent détecter des signes précoces de maladie dans les images médicales.",
+                "Les systèmes d'apprentissage automatique révolutionnent les soins de santé. Les réseaux neuronaux profonds identifient les marqueurs de maladie dans les scans médicaux."
+            )
+        }
+    else:
+        examples = {
+            "Select an example...": ("", ""),
+            "📝 Basic Example": (
+                "This is a sample text in the selected language.",
+                "This is another sample text in the selected language."
+            )
+        }
     
     selected_example = st.selectbox("Choose an example:", list(examples.keys()))
     
     if st.button("Load Selected Example"):
-        if selected_example != "Select an example...":
+        if selected_example not in ["Select an example...", "Selecciona un ejemplo...", "Sélectionnez un exemple..."]:
             st.session_state.reference_input = examples[selected_example][0]
             st.session_state.target_input = examples[selected_example][1]
 
@@ -221,11 +277,12 @@ with col2:
 
 if st.button("🔍 Analyze Overlap", type="primary"):
     if reference and target:
-        with st.spinner("Analyzing texts..."):
-            results = calculate_overlaps_detailed(reference, target)
+        with st.spinner(f"Analyzing texts in {selected_language}..."):
+            results = calculate_overlaps_detailed(reference, target, nlp)
             st.session_state.results = results
             st.session_state.reference = reference
             st.session_state.target = target
+            st.session_state.language = selected_language
     else:
         st.warning("Please enter both reference and target texts.")
 
@@ -248,12 +305,12 @@ if 'results' in st.session_state:
     with col4:
         st.metric("Lemma Content", f"{results['lemma_content_overlap']['score']:.3f}")
     with col5:
-        st.metric("Multiword", f"{results['multiword_overlap']['score']:.3f}")
+        st.metric("Bigrams", f"{results['multiword_overlap']['score']:.3f}")
     
     st.divider()
     
     # Detailed results in tabs
-    tabs = st.tabs(["Total Tokens", "Lemmas", "Content Words", "Lemma Content", "Multiword Units"])
+    tabs = st.tabs(["Total Tokens", "Lemmas", "Content Words", "Lemma Content", "Bigrams"])
     
     metric_keys = ['total_overlap', 'lemma_overlap', 'content_overlap', 'lemma_content_overlap', 'multiword_overlap']
     
@@ -286,7 +343,12 @@ if 'results' in st.session_state:
     
     # CSV Export
     st.divider()
-    csv_data = create_csv_data(st.session_state.reference, st.session_state.target, results)
+    csv_data = create_csv_data(
+        st.session_state.reference, 
+        st.session_state.target, 
+        results,
+        st.session_state.get('language', 'English')
+    )
     
     csv = csv_data.to_csv(index=False)
     st.download_button(
