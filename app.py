@@ -28,6 +28,56 @@ def load_model(model_name):
         subprocess.check_call([sys.executable, "-m", "spacy", "download", model_name])
         return spacy.load(model_name)
 
+def get_multiword_units(doc, max_n=6):
+    """Extract n-grams of various lengths, respecting sentence boundaries"""
+    ngrams = set()
+    
+    for sent in doc.sents:
+        # Get tokens from this sentence (excluding punctuation and spaces)
+        tokens = [token.text.lower() for token in sent if not token.is_punct and not token.is_space]
+        
+        # Extract n-grams from length 2 up to max_n (or length of sentence)
+        max_length = min(len(tokens), max_n)
+        for n in range(2, max_length + 1):
+            for i in range(len(tokens) - n + 1):
+                ngram = ' '.join(tokens[i:i+n])
+                ngrams.add(ngram)
+    
+    return ngrams
+
+def filter_longest_ngrams(ngrams):
+    """Keep only the longest n-grams, removing those that are subsumed by longer ones"""
+    if not ngrams:
+        return []
+    
+    # Sort by length (longest first) and alphabetically
+    sorted_ngrams = sorted(ngrams, key=lambda x: (-len(x.split()), x))
+    
+    longest_only = []
+    for ngram in sorted_ngrams:
+        # Check if this ngram is contained in any already-added longer ngram
+        is_subsumed = False
+        for longer_ngram in longest_only:
+            # Check if ngram appears as a continuous sequence in longer_ngram
+            # We need to check word boundaries to avoid partial matches
+            ngram_words = ngram.split()
+            longer_words = longer_ngram.split()
+            
+            # Check if ngram_words appears as a continuous subsequence in longer_words
+            if len(ngram_words) < len(longer_words):
+                for i in range(len(longer_words) - len(ngram_words) + 1):
+                    if longer_words[i:i+len(ngram_words)] == ngram_words:
+                        is_subsumed = True
+                        break
+            
+            if is_subsumed:
+                break
+        
+        if not is_subsumed:
+            longest_only.append(ngram)
+    
+    return sorted(longest_only)
+
 def calculate_overlaps_detailed(reference_text, target_text, nlp):
     """Calculate overlaps and return detailed information."""
     ref_doc = nlp(reference_text)
@@ -80,25 +130,19 @@ def calculate_overlaps_detailed(reference_text, target_text, nlp):
         'target_only': sorted(list(target_content_lemmas - ref_content_lemmas))
     }
     
-    # 5. Multiword unit overlap (bigrams only)
-    def get_bigrams(doc):
-        """Extract 2-word sequences"""
-        bigrams = set()
-        tokens = [token.text.lower() for token in doc if not token.is_punct and not token.is_space]
-        for i in range(len(tokens) - 1):
-            bigram = ' '.join(tokens[i:i+2])
-            bigrams.add(bigram)
-        return bigrams
-
-    ref_ngrams = get_bigrams(ref_doc)
-    target_ngrams = get_bigrams(target_doc)
+    # 5. Multiword unit overlap (longest forms only, respecting sentence boundaries)
+    ref_ngrams = get_multiword_units(ref_doc)
+    target_ngrams = get_multiword_units(target_doc)
     overlap_ngrams = ref_ngrams & target_ngrams
-
+    
+    # Filter to keep only longest overlapping n-grams
+    longest_overlap = filter_longest_ngrams(overlap_ngrams)
+    
     results['multiword_overlap'] = {
         'score': len(overlap_ngrams) / len(ref_ngrams | target_ngrams) if (ref_ngrams | target_ngrams) else 0,
-        'overlapping': sorted(list(overlap_ngrams)),
-        'ref_only': sorted(list(ref_ngrams - target_ngrams)),
-        'target_only': sorted(list(target_ngrams - ref_ngrams))
+        'overlapping': longest_overlap,
+        'ref_only': [],  # Not shown for multiword units
+        'target_only': []  # Not shown for multiword units
     }
     
     return results
@@ -125,7 +169,7 @@ def create_csv_data(reference_text, target_text, results, language):
         'lemma_overlap': 'Lemmatized Overlap',
         'content_overlap': 'Content Word Overlap',
         'lemma_content_overlap': 'Lemmatized Content Overlap',
-        'multiword_overlap': 'Multiword Unit Overlap (Bigrams)'
+        'multiword_overlap': 'Multiword Unit Overlap (Longest Forms)'
     }
     
     for key, name in metric_names.items():
@@ -140,26 +184,29 @@ def create_csv_data(reference_text, target_text, results, language):
             'Category': 'Overlapping',
             'Items': ', '.join(result['overlapping']) if result['overlapping'] else 'None'
         })
-        rows.append({
-            'Timestamp': '',
-            'Language': '',
-            'Reference Text': '',
-            'Target Text': '',
-            'Metric': name,
-            'Score': '',
-            'Category': 'Reference Only',
-            'Items': ', '.join(result['ref_only']) if result['ref_only'] else 'None'
-        })
-        rows.append({
-            'Timestamp': '',
-            'Language': '',
-            'Reference Text': '',
-            'Target Text': '',
-            'Metric': name,
-            'Score': '',
-            'Category': 'Target Only',
-            'Items': ', '.join(result['target_only']) if result['target_only'] else 'None'
-        })
+        
+        # Only show ref_only and target_only for non-multiword metrics
+        if key != 'multiword_overlap':
+            rows.append({
+                'Timestamp': '',
+                'Language': '',
+                'Reference Text': '',
+                'Target Text': '',
+                'Metric': name,
+                'Score': '',
+                'Category': 'Reference Only',
+                'Items': ', '.join(result['ref_only']) if result['ref_only'] else 'None'
+            })
+            rows.append({
+                'Timestamp': '',
+                'Language': '',
+                'Reference Text': '',
+                'Target Text': '',
+                'Metric': name,
+                'Score': '',
+                'Category': 'Target Only',
+                'Items': ', '.join(result['target_only']) if result['target_only'] else 'None'
+            })
     
     return pd.DataFrame(rows)
 
@@ -186,7 +233,7 @@ with st.sidebar:
     - **Lemmatized Overlap**: Base forms
     - **Content Word Overlap**: Nouns, verbs, adjectives, adverbs
     - **Lemmatized Content**: Lemmatized content words
-    - **Multiword Units**: Bigrams (2-word sequences)
+    - **Multiword Units**: Longest overlapping phrases (2+ words)
     
     **Supports:** English, Spanish, French, German, Italian, Portuguese
     """)
@@ -305,12 +352,12 @@ if 'results' in st.session_state:
     with col4:
         st.metric("Lemma Content", f"{results['lemma_content_overlap']['score']:.3f}")
     with col5:
-        st.metric("Bigrams", f"{results['multiword_overlap']['score']:.3f}")
+        st.metric("Multiword Units", f"{results['multiword_overlap']['score']:.3f}")
     
     st.divider()
     
     # Detailed results in tabs
-    tabs = st.tabs(["Total Tokens", "Lemmas", "Content Words", "Lemma Content", "Bigrams"])
+    tabs = st.tabs(["Total Tokens", "Lemmas", "Content Words", "Lemma Content", "Multiword Units"])
     
     metric_keys = ['total_overlap', 'lemma_overlap', 'content_overlap', 'lemma_content_overlap', 'multiword_overlap']
     
@@ -318,28 +365,40 @@ if 'results' in st.session_state:
         with tab:
             result = results[key]
             
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.markdown("**✅ Overlapping**")
+            # Special handling for multiword units (only show overlapping)
+            if key == 'multiword_overlap':
+                st.markdown("**✅ Overlapping Multiword Units (Longest Forms)**")
+                st.caption("Only showing phrases that appear in both texts, in their longest form")
                 if result['overlapping']:
-                    st.markdown(", ".join(result['overlapping']))
+                    for item in result['overlapping']:
+                        word_count = len(item.split())
+                        st.markdown(f"- {item} *({word_count} words)*")
                 else:
-                    st.markdown("*None*")
-            
-            with col2:
-                st.markdown("**📄 Reference Only**")
-                if result['ref_only']:
-                    st.markdown(", ".join(result['ref_only']))
-                else:
-                    st.markdown("*None*")
-            
-            with col3:
-                st.markdown("**📝 Target Only**")
-                if result['target_only']:
-                    st.markdown(", ".join(result['target_only']))
-                else:
-                    st.markdown("*None*")
+                    st.markdown("*No overlapping multiword units found*")
+            else:
+                # Standard three-column layout for other metrics
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("**✅ Overlapping**")
+                    if result['overlapping']:
+                        st.markdown(", ".join(result['overlapping']))
+                    else:
+                        st.markdown("*None*")
+                
+                with col2:
+                    st.markdown("**📄 Reference Only**")
+                    if result['ref_only']:
+                        st.markdown(", ".join(result['ref_only']))
+                    else:
+                        st.markdown("*None*")
+                
+                with col3:
+                    st.markdown("**📝 Target Only**")
+                    if result['target_only']:
+                        st.markdown(", ".join(result['target_only']))
+                    else:
+                        st.markdown("*None*")
     
     # CSV Export
     st.divider()
